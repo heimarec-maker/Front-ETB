@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --clr-bg: #0a0f1e;
+  --clr-surface: #111827;
+  --clr-nav: #0d1526;
+  --clr-primary: #0070f3;
+  --clr-accent: #00c2ff;
+  --clr-text: #e5e7eb;
+  --clr-muted: #6b7280;
+  --clr-border: rgba(255, 255, 255, 0.08);
+  --nav-h: 68px;
+  --radius: 14px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Status Badges */
+  --badge-pendiente-bg: #FAEEDA;
+  --badge-pendiente-tx: #854F0B;
+  --badge-agenda-bg: #E6F1FB;
+  --badge-agenda-tx: #185FA5;
+  --badge-instalado-bg: #EAF3DE;
+  --badge-instalado-tx: #3B6D11;
+  --badge-500m-bg: #214780;
+  --badge-500m-tx: #ffffff;
+  --badge-1g-bg: #004c8f;
+  --badge-1g-tx: #ffffff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul {
+  list-style: none;
+}
+
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+}
+
+/* Global Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: none;
+}
+
+.btn-primary {
+  background: var(--clr-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-accent {
+  background: var(--clr-accent);
+  color: var(--clr-primary);
+}
+
+.btn-accent:hover {
+  filter: brightness(0.9);
+}
+
+.btn-outline {
+  background: rgba(0, 112, 243, 0.15);
+  color: var(--clr-accent);
+  border: 1px solid rgba(0, 112, 243, 0.35);
+}
+
+.btn-outline:hover {
+  background: rgba(0, 112, 243, 0.28);
+}
+
+/* Global Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-pendiente {
+  background: var(--badge-pendiente-bg);
+  color: var(--badge-pendiente-tx);
+}
+
+.badge-agenda {
+  background: var(--badge-agenda-bg);
+  color: var(--badge-agenda-tx);
+}
+
+.badge-instalado {
+  background: var(--badge-instalado-bg);
+  color: var(--badge-instalado-tx);
+}
+
+.badge-500m {
+  background: var(--badge-500m-bg);
+  color: var(--badge-500m-tx);
+}
+
+.badge-1g {
+  background: var(--badge-1g-bg);
+  color: var(--badge-1g-tx);
+}
