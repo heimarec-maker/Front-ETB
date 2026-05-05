@@ -1,17 +1,18 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PlusCircle } from 'lucide-react'
 import SubPage from '../components/SubPage'
+import { addActivityLog } from '../services/activityLog'
 import './CreacionEquipos.css'
 
-const TIPOS_EQUIPO = [
-  'ONT',
-  'ONT DUAL',
-  'ONT ATP',
-  'STB',
-  'AP',
-  'IP-IPhone virtual',
-  'TV BOX',
-  'Otro'
-]
+const getUsername = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem('currentUser'))
+    return u?.username || 'Desconocido'
+  } catch { return 'Desconocido' }
+}
+
+// Opciones de tipo de equipo eliminadas por input libre
 
 const ESTADOS_ASIGNAR = [
   'Disponible',
@@ -21,10 +22,10 @@ const ESTADOS_ASIGNAR = [
 ]
 
 export default function CreacionEquipos() {
-  const [serial, setSerial] = useState('ZTE') // ONT is the default type
+  const { t } = useTranslation()
+  const [serial, setSerial] = useState('')
   const [mac, setMac] = useState('')
-  const [tipo, setTipo] = useState(TIPOS_EQUIPO[0])
-  const [otroTipo, setOtroTipo] = useState('')
+  const [tipo, setTipo] = useState('')
   const [estado, setEstado] = useState(ESTADOS_ASIGNAR[0])
   
   // Plantilla 
@@ -47,17 +48,7 @@ export default function CreacionEquipos() {
   }
 
   const handleTipoChange = (e) => {
-    const newTipo = e.target.value
-    setTipo(newTipo)
-    
-    let prefix = ''
-    if (newTipo === 'ONT' || newTipo === 'ONT ATP') prefix = 'ZTE'
-    else if (newTipo === 'ONT DUAL') prefix = 'SZTE'
-    else if (newTipo === 'STB') prefix = '653'
-    else if (newTipo === 'AP') prefix = 'APF'
-    else if (newTipo === 'TV BOX') prefix = 'TVBOX'
-
-    setSerial(prefix)
+    setTipo(e.target.value)
   }
 
   const handleSubmit = async (e) => {
@@ -65,13 +56,12 @@ export default function CreacionEquipos() {
     setResult(null)
 
     if (!serial || !mac) {
-      setResult({ type: 'error', message: 'Tanto el Serial como la MAC son obligatorios.' })
+      setResult({ type: 'error', message: t('Tanto el Serial como la MAC son obligatorios.') })
       return
     }
 
-    const tipoFinal = tipo === 'Otro' ? otroTipo : tipo
-    if (!tipoFinal) {
-      setResult({ type: 'error', message: 'Debes especificar el tipo de equipo.' })
+    if (!tipo.trim()) {
+      setResult({ type: 'error', message: t('Debes especificar el tipo de equipo.') })
       return
     }
 
@@ -81,7 +71,14 @@ export default function CreacionEquipos() {
     if (existe) {
       setResult({ 
         type: 'error', 
-        message: `Error: El equipo con serial ${serial} / MAC ${mac} ya existe en el sistema.` 
+        message: `Error: ${t('El equipo con serial')} ${serial} / MAC ${mac} ${t('ya existe en el sistema.')}`
+      })
+      addActivityLog({
+        usuario: getUsername(),
+        accion: 'Creación',
+        modulo: 'Creación Equipos',
+        detalles: `Serial: ${serial} | MAC: ${mac} | Tipo: ${tipo} (Duplicado)`,
+        resultado: 'Error',
       })
       setLoading(false)
       return
@@ -91,27 +88,25 @@ export default function CreacionEquipos() {
     setTimeout(() => {
       setResult({ 
         type: 'success', 
-        message: `¡Equipo creado exitosamente! Se agregó un ${tipoFinal} con el estado: ${estado}.` 
+        message: `${t('¡Equipo creado exitosamente!')} ${t('Se agregó un')} ${tipo} ${t('con el estado:')} ${t(estado)}.` 
+      })
+      addActivityLog({
+        usuario: getUsername(),
+        accion: 'Creación',
+        modulo: 'Creación Equipos',
+        detalles: `Serial: ${serial} | MAC: ${mac} | Tipo: ${tipo} | Estado: ${estado}`,
+        resultado: 'Éxito',
       })
       setLoading(false)
 
       if (mantenerPlantilla) {
-        // Obtenemos el prefijo del tipo actual para resetear el serial a su valor base
-        let prefix = ''
-        if (tipoFinal === 'ONT' || tipoFinal === 'ONT ATP') prefix = 'ZTE'
-        else if (tipoFinal === 'ONT DUAL') prefix = 'SZTE'
-        else if (tipoFinal === 'STB') prefix = '653'
-        else if (tipoFinal === 'AP') prefix = 'APF'
-        else if (tipoFinal === 'TV BOX') prefix = 'TVBOX'
-
-        setSerial(prefix)
+        setSerial('')
         setMac('')
       } else {
         // Limpiamos todo y volvemos a los valores por defecto
-        setSerial('ZTE')
+        setSerial('')
         setMac('')
-        setTipo(TIPOS_EQUIPO[0])
-        setOtroTipo('')
+        setTipo('')
         setEstado(ESTADOS_ASIGNAR[0])
       }
     }, 800)
@@ -119,28 +114,29 @@ export default function CreacionEquipos() {
 
   return (
     <SubPage
-      icon="➕"
-      badge="Módulo"
-      title="Creación de equipos"
-      description="Registro y alta de nuevos equipos en el sistema ETB."
+      icon={<PlusCircle size={18} />}
+      badge={t('Módulo')}
+      title={t('Creación de equipos')}
+      description={t('Registro y alta de nuevos equipos en el sistema.')}
     >
       <div className="creacion-container">
-        <div className="creacion-card">
-          <h2>Registrar Nuevo Equipo</h2>
-          <p className="creacion-subtitle">Diligencia los campos obligatorios para guardar en inventario.</p>
+        <div className="creacion-card glass-card">
+          <h2>{t('Registrar Nuevo Equipo')}</h2>
+          <p className="creacion-subtitle">{t('Diligencia los campos obligatorios para guardar en inventario.')}</p>
 
           <form onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
-                <label>Tipo de Equipo</label>
-                <select value={tipo} onChange={handleTipoChange}>
-                  {TIPOS_EQUIPO.map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <label>{t('Tipo de Equipo')}</label>
+                <input 
+                  type="text" 
+                  value={tipo} 
+                  onChange={handleTipoChange} 
+                  placeholder="Ej: ONT, STB, AP..." 
+                />
               </div>
               <div className="form-group">
-                <label>Serial</label>
+                <label>{t('Serial')}</label>
                 <input 
                   type="text" 
                   placeholder="Ej: ZXHN12345"
@@ -152,7 +148,7 @@ export default function CreacionEquipos() {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Dirección MAC</label>
+                <label>{t('Dirección MAC')}</label>
                 <input 
                   type="text" 
                   placeholder="Ej: 00:1A:2B:AA:BB:CC"
@@ -161,26 +157,16 @@ export default function CreacionEquipos() {
                 />
               </div>
               <div className="form-group">
-                <label>Estado Asignado</label>
+                <label>{t('Estado Asignado')}</label>
                 <select value={estado} onChange={e => setEstado(e.target.value)}>
                   {ESTADOS_ASIGNAR.map(es => (
-                    <option key={es} value={es}>{es}</option>
+                    <option key={es} value={es}>{t(es)}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {tipo === 'Otro' && (
-              <div className="form-group">
-                <label>Especificar otro tipo de equipo</label>
-                <input 
-                  type="text" 
-                  placeholder="Escribe el nombre del tipo..."
-                  value={otroTipo}
-                  onChange={e => setOtroTipo(e.target.value)}
-                />
-              </div>
-            )}
+
 
             <label className="checkbox-group">
               <input 
@@ -188,11 +174,11 @@ export default function CreacionEquipos() {
                 checked={mantenerPlantilla}
                 onChange={e => setMantenerPlantilla(e.target.checked)}
               />
-              <span>Mantener configuración de "Plantilla" (El tipo y el estado no se borrarán al guardar, para registrar varios rápidamente).</span>
+              <span>{t('Mantener configuración de plantilla')}</span>
             </label>
 
-            <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? 'Creando...' : 'Crear Equipo'}
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? t('Creando...') : t('Crear Equipo')}
             </button>
           </form>
 

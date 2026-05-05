@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -6,24 +7,52 @@ import LimpiezaEquipos from './pages/LimpiezaEquipos'
 import CreacionEquipos from './pages/CreacionEquipos'
 import LimpiezaSmw from './pages/LimpiezaSmw'
 import LimpiezaMss from './pages/LimpiezaMss'
+import Login from './pages/Login'
+import Perfil from './pages/Perfil'
+import AdminPanel from './pages/AdminPanel'
+import AdminUsuarios from './pages/AdminUsuarios'
+import AdminReportes from './pages/AdminReportes'
+import AdminRespaldo from './pages/AdminRespaldo'
+import ProtectedRoute from './components/ProtectedRoute'
+
+function AppContent() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/';
+
+  return (
+    <div className="app-wrapper">
+      <div className="bg-orb orb-1"></div>
+      <div className="bg-orb orb-2"></div>
+      {!isLoginPage && <Navbar />}
+      <main className={!isLoginPage ? "main-content" : ""}>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/limpieza-equipos" element={<LimpiezaEquipos />} />
+          <Route path="/creacion-equipos" element={<CreacionEquipos />} />
+          <Route path="/limpieza-smw" element={<LimpiezaSmw />} />
+          <Route path="/limpieza-mss" element={<LimpiezaMss />} />
+          <Route path="/perfil" element={<Perfil />} />
+          
+          {/* Rutas de Administrador */}
+          <Route path="/admin/actividad" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
+          <Route path="/admin/usuarios" element={<ProtectedRoute requiredRole="admin"><AdminUsuarios /></ProtectedRoute>} />
+          <Route path="/admin/reportes" element={<ProtectedRoute requiredRole="admin"><AdminReportes /></ProtectedRoute>} />
+          <Route path="/admin/respaldo" element={<ProtectedRoute requiredRole="admin"><AdminRespaldo /></ProtectedRoute>} />
+        </Routes>
+      </main>
+      {!isLoginPage && <Footer />}
+    </div>
+  );
+}
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="app-wrapper">
-        <Navbar />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/limpieza-equipos" element={<LimpiezaEquipos />} />
-            <Route path="/creacion-equipos" element={<CreacionEquipos />} />
-            <Route path="/limpieza-smw" element={<LimpiezaSmw />} />
-            <Route path="/limpieza-mss" element={<LimpiezaMss />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
 

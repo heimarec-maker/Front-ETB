@@ -1,118 +1,566 @@
+/* ============================================
+   NAVBAR — ETB
+   Estructura: Logo | Links (centrados) | Right (usuario + hamburguesa)
+   ============================================ */
+
 .navbar {
     position: sticky;
     top: 0;
-    z-index: 100;
-    height: var(--nav-h);
-    background: var(--clr-nav);
-    border-bottom: 1px solid var(--clr-border);
+    z-index: 1000;
+    height: 90px;
+    background: rgba(13, 21, 38, 0.55);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    gap: 1rem;
+    padding: 0 3.5rem;
+    gap: 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Brand / Logo */
+/* ---- Logo ---- */
 .navbar-brand {
     display: flex;
     align-items: center;
     flex-shrink: 0;
     text-decoration: none;
-    transition: opacity var(--transition);
-}
-
-.navbar-brand:hover {
-    opacity: 0.85;
 }
 
 .navbar-logo {
-    height: 42px;
+    height: 72px;          /* Más grande */
     width: auto;
-    object-fit: contain;
-    border-radius: 8px;
+    filter: drop-shadow(0 0 14px rgba(0, 112, 243, 0.35));
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
 }
 
-/* Links */
+.navbar-brand:hover .navbar-logo {
+    transform: scale(1.07) rotate(-2deg);
+    filter: drop-shadow(0 0 20px rgba(0, 194, 255, 0.5));
+}
+
+/* ---- Links — centrados con flex:1 ---- */
 .navbar-links {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: center;   /* centrar horizontalmente */
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;                   /* ocupa todo el espacio disponible */
+}
+
+.navbar-links li {
+    display: flex;
 }
 
 .nav-link {
-    font-size: 0.88rem;
+    position: relative;
+    font-size: 0.82rem;
     font-weight: 500;
-    color: var(--clr-text);
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    transition: background var(--transition), color var(--transition);
+    color: rgba(255, 255, 255, 0.6);
+    padding: 0.55rem 1.15rem;
+    border-radius: 10px;
+    transition: color 0.25s ease, background 0.25s ease, opacity 0.25s ease;
+    white-space: nowrap;
+    letter-spacing: 0.08em;        /* tracking más abierto = aspecto premium */
+    text-transform: uppercase;     /* mayúsculas dan jerarquía profesional */
+    text-decoration: none;
+}
+
+.nav-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-link.active {
+    color: var(--clr-accent, #00c2ff);
+    background: rgba(0, 194, 255, 0.1);
+    font-weight: 600;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: var(--clr-accent, #00c2ff);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+    box-shadow: 0 0 8px var(--clr-accent, #00c2ff);
+}
+
+.nav-link.active::after {
+    width: 28%;
+}
+
+/* ---- Derecha: usuario + hamburguesa ---- */
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+/* ---- Usuario (desktop) ---- */
+.nav-user-container {
+    position: relative;
+}
+
+.nav-user-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 1rem 0.45rem 0.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50px;       /* completamente redondeado — estilo pill */
+    cursor: pointer;
+    transition: background 0.25s ease, border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+    color: #fff;
+}
+
+.nav-user-trigger:hover,
+.nav-user-trigger.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 194, 255, 0.35);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--clr-primary, #0070f3), var(--clr-accent, #00c2ff));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 3px 12px rgba(0, 112, 243, 0.45);
+}
+
+.user-info-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.2;
+}
+
+.user-greeting {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.38);
+    font-weight: 400;
+    letter-spacing: 0.12em;        /* tracking amplio en labels pequeños */
+    text-transform: uppercase;
+}
+
+.user-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.01em;
+    text-transform: capitalize;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+/* ---- Role Badge ---- */
+.role-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    line-height: 1;
     white-space: nowrap;
 }
 
-.nav-link:hover,
-.nav-link.active {
-    background: rgba(0, 112, 243, 0.15);
-    color: var(--clr-accent);
+.admin-badge {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(139, 92, 246, 0.35));
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.15);
 }
 
-/* Hamburger */
-.hamburger {
-    display: none;
+.chevron-icon {
+    width: 14px;
+    height: 14px;
+    color: rgba(255, 255, 255, 0.45);
+    transition: transform 0.3s ease, color 0.25s ease;
+    flex-shrink: 0;
+}
+
+.nav-user-trigger.active .chevron-icon {
+    transform: rotate(180deg);
+    color: var(--clr-accent, #00c2ff);
+}
+
+/* ---- Dropdown de usuario ---- */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 210px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    padding: 0.6rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    z-index: 1100;
+    animation: dropdownSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
     flex-direction: column;
-    gap: 5px;
-    background: none;
+    gap: 0.2rem;
+}
+
+@keyframes dropdownSlide {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.75rem 0.9rem;
+    color: rgba(255, 255, 255, 0.78);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    border-radius: 10px;
+    transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+    background: transparent;
     border: none;
+    width: 100%;
     cursor: pointer;
-    padding: 6px;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+    padding-left: 1.1rem;
+}
+
+.dropdown-item.logout:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.item-icon {
+    font-size: 1rem;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.07);
+    margin: 0.35rem 0.5rem;
+}
+
+/* ============================================
+   HAMBURGUESA — Solo visible en móvil
+   ============================================ */
+.hamburger {
+    display: none;          /* oculto en desktop */
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    padding: 9px 10px;
+    border-radius: 10px;
+    transition: background 0.25s ease, border-color 0.25s ease;
+    flex-shrink: 0;
+}
+
+.hamburger:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.18);
 }
 
 .hamburger span {
     display: block;
-    width: 24px;
+    width: 22px;
     height: 2px;
-    background: var(--clr-text);
+    background: #fff;
     border-radius: 2px;
-    transition: var(--transition);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform-origin: center;
 }
 
-.hamburger.is-open span:nth-child(1) {
-    transform: translateY(7px) rotate(45deg);
+.hamburger.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.is-open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ============================================
+   PANEL MÓVIL — overlay + panel
+   ============================================ */
+.mobile-menu {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 13, 28, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
 }
 
-.hamburger.is-open span:nth-child(2) {
-    opacity: 0;
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
-.hamburger.is-open span:nth-child(3) {
-    transform: translateY(-7px) rotate(-45deg);
+.mobile-menu-panel {
+    position: absolute;
+    top: 90px;              /* justo debajo del navbar */
+    left: 1rem;
+    right: 1rem;
+    background: rgba(13, 21, 42, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 1.25rem;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    animation: panelSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
 }
 
-@media (max-width: 768px) {
+@keyframes panelSlide {
+    from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Links en móvil */
+.mobile-nav-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.mobile-nav-link {
+    display: block;
+    padding: 0.9rem 1.1rem;
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 12px;
+    transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.mobile-nav-links li:last-child .mobile-nav-link {
+    border-bottom: none;
+}
+
+.mobile-nav-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    padding-left: 1.4rem;
+}
+
+.mobile-nav-link.active {
+    color: var(--clr-accent, #00c2ff);
+    background: rgba(0, 194, 255, 0.08);
+    font-weight: 600;
+}
+
+/* Separador móvil */
+.mobile-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.07);
+    margin: 1rem 0;
+}
+
+/* Sección usuario en móvil */
+.mobile-user-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mobile-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.5rem 0.75rem 1rem;
+}
+
+.mobile-greeting {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.38);
+    margin: 0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.mobile-username {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: 0.01em;
+    text-transform: capitalize;
+}
+
+.mobile-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.85rem 1.1rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.mobile-action-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.mobile-action-btn.logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* ============================================
+   RESPONSIVE — breakpoints
+   ============================================ */
+
+/* Tablets medianas: reducir padding y gaps */
+@media (max-width: 1280px) {
+    .navbar {
+        padding: 0 2.5rem;
+    }
     .navbar-links {
-        display: none;
-        position: absolute;
-        top: var(--nav-h);
-        left: 0;
-        right: 0;
-        flex-direction: column;
-        background: var(--clr-nav);
-        border-bottom: 1px solid var(--clr-border);
-        padding: 1rem;
         gap: 0.25rem;
-        z-index: 99;
     }
-
-    .navbar-links.open {
-        display: flex;
-    }
-
     .nav-link {
-        width: 100%;
-        text-align: left;
-        padding: 0.75rem 1rem;
+        padding: 0.5rem 0.9rem;
+        font-size: 0.78rem;
+        letter-spacing: 0.07em;
+    }
+}
+
+/* Tablet pequeña */
+@media (max-width: 992px) {
+    .navbar {
+        padding: 0 2rem;
+    }
+    .nav-link {
+        padding: 0.45rem 0.65rem;
+        font-size: 0.75rem;
+        letter-spacing: 0.06em;
+    }
+}
+
+/* Mobile — punto de quiebre */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0 1.25rem;
+        height: 70px;
     }
 
+    /* Ocultar links de desktop y menú de usuario */
+    .navbar-links,
+    .nav-user-container {
+        display: none;
+    }
+
+    /* Empujar el navbar-right al extremo derecho
+       (los links ocultos ya no aportan el flex:1 que separaba ambos lados) */
+    .navbar-right {
+        margin-left: auto;
+    }
+
+    /* Mostrar hamburguesa */
     .hamburger {
         display: flex;
     }
+
+    /* Ajustar logo para móvil */
+    .navbar-logo {
+        height: 54px;
+    }
+
+    /* Ajustar panel móvil para que quede debajo del navbar de 70px */
+    .mobile-menu-panel {
+        top: 70px;
+    }
+}
+
+
+/* ============================================
+   ADMIN NAVBAR VARIANT
+   ============================================ */
+
+/* Borde inferior con acento púrpura */
+.navbar--admin {
+    border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.35),
+        0 1px 0 rgba(168, 85, 247, 0.3);
+}
+
+/* Avatar con anillo púrpura */
+.user-avatar--admin {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+    box-shadow: 0 0 0 2.5px rgba(168, 85, 247, 0.4),
+                0 0 16px rgba(168, 85, 247, 0.25) !important;
+}
+
+/* Nav links con ícono inline */
+.nav-link-icon {
+    margin-right: 0.35rem;
+    opacity: 0.7;
+    transition: opacity 0.25s ease;
+}
+
+.nav-link:hover .nav-link-icon {
+    opacity: 1;
+}
+
+/* Links admin — acento púrpura */
+.nav-link--admin:hover {
+    color: #e0d0ff;
+    background: rgba(168, 85, 247, 0.1);
+}
+
+.nav-link--admin.active {
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.12);
+}
+
+.nav-link--admin::after {
+    background: #a855f7;
+    box-shadow: 0 0 8px #a855f7;
 }

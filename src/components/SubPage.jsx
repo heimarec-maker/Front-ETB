@@ -1,17 +1,22 @@
 
+import { Construction } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import './SubPage.css'
 
 export default function SubPage({ icon, badge, title, description, children }) {
+  const { t } = useTranslation()
   return (
     <section className="page-hero">
       <div className="page-content">
-        <div className="page-badge">{icon} {badge}</div>
-        <h1 className="page-title">{title}</h1>
-        <p className="page-desc">{description}</p>
+        <div className="page-header">
+          <div className="page-badge">{icon} {badge}</div>
+          <h1 className="page-title">{title}</h1>
+          <p className="page-desc">{description}</p>
+        </div>
         {children || (
           <div className="coming-soon">
-            <div className="coming-soon-icon">🚧</div>
-            <p>Contenido en construcción. Pronto estará disponible.</p>
+            <div className="coming-soon-icon"><Construction size={48} /></div>
+            <p>{t('Contenido en construcción. Pronto estará disponible.')}</p>
           </div>
         )}
       </div>

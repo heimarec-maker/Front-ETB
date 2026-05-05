@@ -8,8 +8,15 @@
 }
 
 .page-content {
-    max-width: 900px;
-    width: 100%;
+    max-width: 1600px;
+    width: 98%;
+}
+
+.page-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .page-badge {
@@ -43,7 +50,7 @@
 .page-desc {
     font-size: 1.05rem;
     color: var(--clr-muted);
-    margin-bottom: 2.5rem;
+    margin: 0 auto 2.5rem auto;
     line-height: 1.7;
     max-width: 600px;
 }
