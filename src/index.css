@@ -44,6 +44,13 @@ body {
   color: var(--clr-text);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
 }
 
 a {
@@ -129,6 +136,9 @@ ul {
   flex: 1;
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Premium Gradient Text Utility */

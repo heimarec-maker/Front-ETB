@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Monitor, Sparkles, Search } from 'lucide-react'
+import { Monitor, Sparkles, Search, Download } from 'lucide-react'
 import SubPage from '../components/SubPage'
 import { addActivityLog } from '../services/activityLog'
+import { exportOperationResults } from '../services/exportService'
 import './LimpiezaEquipos.css'
 
 const getUsername = () => {
@@ -32,6 +33,7 @@ export default function LimpiezaEquipos() {
   const [querySerial, setQuerySerial] = useState('')
   const [queryLoading, setQueryLoading] = useState(false)
   const [queryResult, setQueryResult] = useState(null)
+  const [history, setHistory] = useState([])
 
   const mockProcess = (s, m) => {
     return new Promise((resolve) => {
@@ -63,6 +65,7 @@ export default function LimpiezaEquipos() {
       }
       const res = await mockProcess(serial, mac)
       setResult(res)
+      setHistory(prev => [{ input: `${serial} | ${mac}`, status: mapResultType(res.type), message: res.message, timestamp: new Date().toISOString() }, ...prev])
       addActivityLog({
         usuario: getUsername(),
         accion: 'Limpieza',
@@ -78,6 +81,7 @@ export default function LimpiezaEquipos() {
       }
       setTimeout(() => {
         setResult({ type: 'info', message: 'Se ha procesado el lote de limpieza. Todos los equipos válidos fueron liberados.' })
+        setHistory(prev => [{ input: `Lote (${masivaText.trim().split('\n').length})`, status: 'Info', message: 'Lote procesado', timestamp: new Date().toISOString() }, ...prev])
         setLoading(false)
         addActivityLog({
           usuario: getUsername(),
@@ -221,6 +225,21 @@ export default function LimpiezaEquipos() {
             </div>
           )}
         </div>
+
+        </div>
+
+        {/* BOTÓN EXPORTAR */}
+        {history.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              className="btn btn-primary"
+              style={{ gap: '0.5rem' }}
+              onClick={() => exportOperationResults({ module: 'Limpieza_Equipos', results: history, t })}
+            >
+              <Download size={16} /> {t('Exportar')} ({history.length})
+            </button>
+          </div>
+        )}
 
       </div>
     </SubPage>

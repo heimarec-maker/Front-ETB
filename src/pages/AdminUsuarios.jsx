@@ -7,6 +7,7 @@ import {
   Activity, Mail, Edit, Trash2, Download
 } from 'lucide-react';
 import './AdminPanel.css';
+import { exportUsers } from '../services/exportService';
 
 export default function AdminUsuarios() {
   const { t } = useTranslation();
@@ -29,22 +30,7 @@ export default function AdminUsuarios() {
 
   const handleExport = () => {
     if (filteredUsers.length === 0) return;
-    const headers = [t('Nombre'), t('Correo'), t('Rol'), t('Estado'), t('Último Acceso')];
-    const rows = filteredUsers.map(u => [
-      `"${u.name}"`,
-      `"${u.email}"`,
-      `"${u.role}"`,
-      `"${u.status}"`,
-      `"${u.lastLogin}"`
-    ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte_usuarios_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportUsers(filteredUsers, t);
   };
 
   return (

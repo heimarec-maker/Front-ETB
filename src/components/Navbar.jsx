@@ -7,8 +7,8 @@ import './Navbar.css'
 
 /* ── Links de navegación por rol ── */
 const userNavItems = [
-  { labelKey: 'Limpiezas equipos',        path: '/limpieza-equipos' },
-  { labelKey: 'Equipos creados',         path: '/creacion-equipos' },
+  { labelKey: 'Limpieza de equipos',        path: '/limpieza-equipos' },
+  { labelKey: 'Creación de equipos',         path: '/creacion-equipos' },
   { labelKey: 'Limpieza direcciones SMW', path: '/limpieza-smw'    },
   { labelKey: 'Limpieza ordenes MSS',     path: '/limpieza-mss'    },
 ]

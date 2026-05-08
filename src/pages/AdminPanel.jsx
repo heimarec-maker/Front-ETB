@@ -7,6 +7,7 @@ import {
   Clock, TrendingUp, BarChart3
 } from 'lucide-react'
 import { getActivityLogs, getActivityStats, clearActivityLogs } from '../services/activityLog'
+import { exportActivityLogs } from '../services/exportService'
 import SubPage from '../components/SubPage'
 import './AdminPanel.css'
 
@@ -24,7 +25,7 @@ const ACTION_CONFIG = {
 }
 
 export default function AdminPanel() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [logs, setLogs] = useState([])
   const [stats, setStats] = useState({})
   const [filterAction, setFilterAction] = useState('Todas')
@@ -69,7 +70,7 @@ export default function AdminPanel() {
     const groups = {}
     filteredLogs.forEach(log => {
       const d = new Date(log.timestamp)
-      const dateKey = d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
+      const dateKey = d.toLocaleDateString(i18n.language, { year: 'numeric', month: 'long', day: 'numeric' })
       if (!groups[dateKey]) groups[dateKey] = []
       groups[dateKey].push(log)
     })
@@ -86,28 +87,12 @@ export default function AdminPanel() {
   // Exportar CSV
   const handleExport = () => {
     if (filteredLogs.length === 0) return
-    const headers = [t('Fecha'), t('Usuario'), t('Acción'), t('Módulo'), t('Detalles'), t('Resultado')]
-    const rows = filteredLogs.map(l => [
-      formatDate(l.timestamp),
-      l.usuario,
-      l.accion,
-      l.modulo,
-      `"${(l.detalles || '').replace(/"/g, '""')}"`,
-      l.resultado,
-    ])
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `registro_actividad_${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    exportActivityLogs(filteredLogs, t)
   }
 
   const formatDate = (iso) => {
     const d = new Date(iso)
-    return d.toLocaleDateString('es-CO', {
+    return d.toLocaleDateString(i18n.language, {
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     })
@@ -265,7 +250,7 @@ export default function AdminPanel() {
                                   {log.resultado}
                                 </span>
                                 <span className="timeline-time">
-                                  {new Date(log.timestamp).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}
+                                  {new Date(log.timestamp).toLocaleTimeString(i18n.language, {hour: '2-digit', minute:'2-digit'})}
                                 </span>
                               </div>
                             </div>

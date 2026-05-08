@@ -601,6 +601,13 @@
   border-bottom: none;
 }
 
+@media (max-width: 768px) {
+  .admin-table th, .admin-table td {
+    padding: 0.8rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
 .admin-table td {
   padding: 1.2rem 1.5rem; /* Separated padding */
   border-bottom: none;

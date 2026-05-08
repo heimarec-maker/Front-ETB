@@ -109,7 +109,7 @@ export default function Perfil() {
           <div className="perfil-hero-info">
             <h1 className="perfil-name">{formData.username}</h1>
             <p className="perfil-role">{formData.cargo} · {formData.area}</p>
-            <span className="perfil-badge">Activo</span>
+            <span className="perfil-badge">{t('Activo')}</span>
           </div>
 
           {/* Acciones hero */}
@@ -257,17 +257,10 @@ export default function Perfil() {
                   value={settings.language}
                   onChange={(e) => updateSetting('language', e.target.value)}
                 >
-                  <option value="es-CO">Español (Colombia)</option>
-                  <option value="en-US">English (US)</option>
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="fr-FR">Français (France)</option>
-                  <option value="de-DE">Deutsch (Deutschland)</option>
-                  <option value="it-IT">Italiano (Italia)</option>
-                  <option value="zh-CN">中文 (中国)</option>
-                  <option value="ja-JP">日本語 (日本)</option>
-                  <option value="ko-KR">한국어 (대한민국)</option>
-                  <option value="ru-RU">Русский (Россия)</option>
-                  <option value="ar-SA">العربية (السعودية)</option>
+                  <option value="es-CO">🇨🇴 Español (Colombia)</option>
+                  <option value="en-US">🇺🇸 English (US)</option>
+                  <option value="pt-BR">🇧🇷 Português (Brasil)</option>
+                  <option value="zh-CN">🇨🇳 中文 (中国)</option>
                 </select>
               }
             />

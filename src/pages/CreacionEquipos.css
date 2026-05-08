@@ -154,6 +154,18 @@
     }
     
     .creacion-card {
-        padding: 1.5rem;
+        padding: 1.5rem 1rem;
+    }
+
+    .checkbox-group {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0.8rem;
+    }
+    
+    .result-box {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
     }
 }

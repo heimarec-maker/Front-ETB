@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PlusCircle } from 'lucide-react'
+import { PlusCircle, Download } from 'lucide-react'
 import SubPage from '../components/SubPage'
 import { addActivityLog } from '../services/activityLog'
+import { exportOperationResults } from '../services/exportService'
 import './CreacionEquipos.css'
 
 const getUsername = () => {
@@ -33,6 +34,7 @@ export default function CreacionEquipos() {
 
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
+  const [history, setHistory] = useState([])
 
   const mockCheckEquipoExistente = (s, m) => {
     return new Promise((resolve) => {
@@ -73,6 +75,7 @@ export default function CreacionEquipos() {
         type: 'error', 
         message: `Error: ${t('El equipo con serial')} ${serial} / MAC ${mac} ${t('ya existe en el sistema.')}`
       })
+      setHistory(prev => [{ input: `${serial} | ${mac} | ${tipo}`, status: 'Error', message: 'Duplicado', timestamp: new Date().toISOString() }, ...prev])
       addActivityLog({
         usuario: getUsername(),
         accion: 'Creación',
@@ -90,6 +93,7 @@ export default function CreacionEquipos() {
         type: 'success', 
         message: `${t('¡Equipo creado exitosamente!')} ${t('Se agregó un')} ${tipo} ${t('con el estado:')} ${t(estado)}.` 
       })
+      setHistory(prev => [{ input: `${serial} | ${mac} | ${tipo}`, status: 'Éxito', message: estado, timestamp: new Date().toISOString() }, ...prev])
       addActivityLog({
         usuario: getUsername(),
         accion: 'Creación',
@@ -185,6 +189,19 @@ export default function CreacionEquipos() {
           {result && (
             <div className={`result-box ${result.type}`}>
               {result.message}
+            </div>
+          )}
+
+          {/* BOTÓN EXPORTAR */}
+          {history.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button
+                className="btn btn-primary"
+                style={{ gap: '0.5rem', display: 'flex', alignItems: 'center' }}
+                onClick={() => exportOperationResults({ module: 'Creacion_Equipos', results: history, t })}
+              >
+                <Download size={16} /> {t('Exportar')} ({history.length})
+              </button>
             </div>
           )}
 
