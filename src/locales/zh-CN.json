@@ -211,5 +211,10 @@
   "Usuarios Activos": "活跃用户",
   "Administradores": "管理员",
   "Inactivo": "不活跃",
-  "Abrir menú": "打开菜单"
+  "Abrir menú": "打开菜单",
+  "Tanto el Serial como la MAC son obligatorios para la limpieza.": "序列号和 MAC 地址都是清理的必填项。",
+  "No se detectaron seriales y MACs válidos en el listado. Asegúrate de que cada línea contenga ambos.": "列表中未检测到有效的序列号和 MAC 地址。请确保每行都包含两者。",
+  "Error al conectar con el servidor o en el proceso de limpieza.": "连接服务器或清理过程中出错。",
+  "Tanto el Serial como la MAC son obligatorios para la consulta.": "序列号和 MAC 地址都是查询的必填项。",
+  "Error al conectar con el servidor o al consultar el equipo.": "连接服务器或查询设备时出错。"
 }

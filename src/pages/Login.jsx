@@ -1,23 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useUser } from '../context/UserContext';
 import './Login.css';
 
-// Mini base de datos simulada — roles: 'admin' | 'user'
-const USERS_DB = [
-  {
-    username: 'heimar',
-    email: 'heimar@etb.com.co',
-    password: 'Heimar123!', // Cumple con protocolos: 8+ chars, mayúscula, minúscula, número y especial
-    role: 'user'
-  },
-  {
-    username: 'Wendy',
-    email: 'wendy@etb.com.co',
-    password: 'Wendy123!',
-    role: 'admin'
-  }
-];
+import { loginBackend } from '../services/authService';
 
 const Login = () => {
   const { t } = useTranslation();
@@ -26,12 +13,18 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login, currentUser } = useUser();
 
-  // Al cargar la página de login, limpiamos la sesión anterior si existiera
-  // y cargamos los datos si el usuario seleccionó "Recordarme"
   React.useEffect(() => {
-    localStorage.removeItem('currentUser');
+    if (currentUser) {
+      navigate('/home');
+    }
+  }, [currentUser, navigate]);
+
+  // Cargar datos de "Recordarme"
+  React.useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
     const savedPassword = localStorage.getItem('rememberedPassword');
     
@@ -44,51 +37,57 @@ const Login = () => {
     }
   }, []);
 
-  const validatePassword = (pass) => {
-    // Protocolo de seguridad: Mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 carácter especial
-    const minLength = 8;
-    const hasUpper = /[A-Z]/.test(pass);
-    const hasLower = /[a-z]/.test(pass);
-    const hasNumber = /[0-9]/.test(pass);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pass);
-    return pass.length >= minLength && hasUpper && hasLower && hasNumber && hasSpecial;
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    // Validar protocolos de seguridad de la contraseña ingresada
-    if (!validatePassword(password)) {
-      setError(t('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.'));
+    if (!email) {
+      setError(t('El correo o usuario es obligatorio.'));
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!password) {
+      setError(t('La contraseña es obligatoria.'));
+      setIsLoading(false);
       return;
     }
 
-    // Buscar en la "mini base de datos" (acepta tanto username como email)
-    const user = USERS_DB.find(
-      u => (u.email.toLowerCase() === email.toLowerCase() || u.username.toLowerCase() === email.toLowerCase()) && u.password === password
-    );
+    try {
+      const { user } = await loginBackend(email, password);
 
-    if (user) {
       // Manejar la opción "Recordarme"
       if (rememberMe) {
-        localStorage.setItem('rememberedEmail', user.email);
-        localStorage.setItem('rememberedPassword', user.password);
+        localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('rememberedPassword', password);
       } else {
         localStorage.removeItem('rememberedEmail');
         localStorage.removeItem('rememberedPassword');
       }
 
-      // Guardar sesión activa ("los datos del usuario en el momento") en el navegador
-      localStorage.setItem('currentUser', JSON.stringify({
-        username: user.username,
-        email: user.email,
-        role: user.role || 'user'
-      }));
-      // Simular login exitoso y redirigir al Dashboard /home
+      // Guardar sesión activa en el context
+      login({
+        username: user.username || email.split('@')[0],
+        email: user.email || email,
+        role: user.role || 'user',
+        cargo: user.cargo || 'Técnico ETB',
+        area: user.area || 'Operaciones',
+        ...user
+      });
+
+      // Redirigir al Dashboard /home
       navigate('/home');
-    } else {
-      setError(t('Credenciales incorrectas. Verifique su correo/usuario y contraseña.'));
+
+    } catch (err) {
+      setError(err.message || t('Error al conectar con el servidor.'));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -121,6 +120,9 @@ const Login = () => {
                 placeholder="heimar@etb.com.co "
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onDrop={(e) => e.preventDefault()}
+                autoComplete="email"
                 required
               />
             </div>
@@ -140,6 +142,9 @@ const Login = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onDrop={(e) => e.preventDefault()}
+                autoComplete="off"
                 required
                 style={{ paddingRight: '40px' }}
               />
@@ -189,8 +194,8 @@ const Login = () => {
             <a href="#" className="forgot-password">{t('¿Olvidaste tu contraseña?')}</a>
           </div>
 
-          <button type="submit" className="btn btn-primary login-btn">
-            {t('Iniciar Sesión')}
+          <button type="submit" className="btn btn-primary login-btn" disabled={isLoading}>
+            {isLoading ? t('Conectando...') : t('Iniciar Sesión')}
           </button>
         </form>
 

@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom'
+import { useUser } from '../context/UserContext'
 
 /**
  * Componente de protección de rutas basado en roles.
@@ -10,8 +11,7 @@ import { Navigate } from 'react-router-dom'
  * @param {string} [props.requiredRole] - Rol requerido (ej: 'admin'). Si no se especifica, solo valida autenticación.
  */
 export default function ProtectedRoute({ children, requiredRole }) {
-  const savedUser = localStorage.getItem('currentUser')
-  const currentUser = savedUser ? JSON.parse(savedUser) : null
+  const { currentUser } = useUser()
 
   // Sin sesión → redirigir al login
   if (!currentUser) {

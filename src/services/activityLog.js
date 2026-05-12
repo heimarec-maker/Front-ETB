@@ -1,18 +1,18 @@
 /**
  * Servicio de registro de actividad (Activity Log)
- * Almacena las acciones de los usuarios en localStorage.
- * Cada entrada contiene: id, usuario, acción, módulo, detalles, resultado, timestamp.
+ * Guarda las acciones en localStorage.
  */
 
-const STORAGE_KEY = 'etb_activity_log'
+const LOCAL_KEY = 'etb_activity_log'
 
+// ─── Obtener todos los logs ───────────────────────────────────────────────────
 /**
- * Obtiene todos los registros de actividad.
- * @returns {Array} Lista de registros ordenados por fecha (más recientes primero).
+ * Obtiene todos los registros de actividad desde localStorage.
+ * @returns {Array} Lista ordenada por fecha descendente.
  */
 export function getActivityLogs() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(LOCAL_KEY)
     const logs = raw ? JSON.parse(raw) : []
     return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
   } catch {
@@ -20,20 +20,22 @@ export function getActivityLogs() {
   }
 }
 
+// ─── Agregar un nuevo log ─────────────────────────────────────────────────────
 /**
- * Agrega un nuevo registro de actividad.
+ * Agrega un nuevo registro de actividad en localStorage.
  * @param {Object} entry
- * @param {string} entry.usuario   - Nombre del usuario que realiza la acción.
- * @param {string} entry.accion    - Tipo de acción: 'Limpieza' | 'Creación' | 'Consulta'.
- * @param {string} entry.modulo    - Módulo donde ocurrió: 'Limpieza Equipos' | 'Creación Equipos', etc.
- * @param {string} entry.detalles  - Detalles libres (serial, MAC, etc.).
+ * @param {string} entry.usuario   - Nombre del usuario.
+ * @param {string} entry.accion    - 'Limpieza' | 'Creación' | 'Consulta'.
+ * @param {string} entry.modulo    - Módulo donde ocurrió.
+ * @param {string} entry.detalles  - Detalles libres.
  * @param {string} entry.resultado - 'Éxito' | 'Error' | 'Advertencia' | 'Info'.
+ * @returns {Object} El registro creado.
  */
 export function addActivityLog({ usuario, accion, modulo, detalles, resultado }) {
   const logs = getActivityLogs()
 
   const newEntry = {
-    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     usuario,
     accion,
     modulo,
@@ -43,21 +45,21 @@ export function addActivityLog({ usuario, accion, modulo, detalles, resultado })
   }
 
   logs.unshift(newEntry)
-
-  // Mantener solo los últimos 500 registros para no sobrecargar localStorage
-  const trimmed = logs.slice(0, 500)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(logs.slice(0, 500)))
+  window.dispatchEvent(new CustomEvent('activityLogUpdated'))
 
   return newEntry
 }
 
+// ─── Limpiar todos los logs ───────────────────────────────────────────────────
 /**
- * Limpia todos los registros de actividad.
+ * Elimina todos los registros de actividad.
  */
 export function clearActivityLogs() {
-  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(LOCAL_KEY)
 }
 
+// ─── Estadísticas ─────────────────────────────────────────────────────────────
 /**
  * Obtiene estadísticas resumidas de los registros.
  * @returns {Object} { total, limpiezas, creaciones, consultas, errores, usuarios }

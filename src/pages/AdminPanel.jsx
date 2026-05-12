@@ -1,14 +1,17 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ShieldCheck, Activity, Sparkles, PlusCircle,
   Search, AlertTriangle, CheckCircle, XCircle,
   Info, Trash2, Download, Filter, Users,
-  Clock, TrendingUp, BarChart3
+  Clock, TrendingUp, BarChart3, RefreshCw,
+  ChevronRight, Database
 } from 'lucide-react'
-import { getActivityLogs, getActivityStats, clearActivityLogs } from '../services/activityLog'
+import { getActivityLogs, clearActivityLogs } from '../services/activityLog'
+import { getDBActivityLogs } from '../services/limpiezaDbService'
 import { exportActivityLogs } from '../services/exportService'
 import SubPage from '../components/SubPage'
+import LogDetailModal from '../components/LogDetailModal'
 import './AdminPanel.css'
 
 const RESULT_CONFIG = {
@@ -24,6 +27,21 @@ const ACTION_CONFIG = {
   'Consulta': { Icon: Search,     className: 'action-consulta' },
 }
 
+// ── Calcular estadísticas desde un array de logs ────────────────────────────
+function calcStats(allLogs) {
+  const usuarios = new Set(allLogs.map(l => l.usuario))
+  return {
+    total:        allLogs.length,
+    limpiezas:    allLogs.filter(l => l.accion === 'Limpieza').length,
+    creaciones:   allLogs.filter(l => l.accion === 'Creación').length,
+    consultas:    allLogs.filter(l => l.accion === 'Consulta').length,
+    errores:      allLogs.filter(l => l.resultado === 'Error').length,
+    exitosos:     allLogs.filter(l => l.resultado === 'Éxito').length,
+    usuarios:     usuarios.size,
+    listaUsuarios: [...usuarios],
+  }
+}
+
 export default function AdminPanel() {
   const { t, i18n } = useTranslation()
   const [logs, setLogs] = useState([])
@@ -33,18 +51,55 @@ export default function AdminPanel() {
   const [filterUser, setFilterUser] = useState('Todos')
   const [searchText, setSearchText] = useState('')
   const [showConfirmClear, setShowConfirmClear] = useState(false)
+  const [countdown, setCountdown] = useState(10)
+  const [selectedLog, setSelectedLog] = useState(null)
+  const [loadingDB, setLoadingDB] = useState(false)
 
-  // Cargar datos
-  const refreshData = () => {
-    setLogs(getActivityLogs())
-    setStats(getActivityStats())
-  }
+  // Cargar y fusionar logs de SQLite + localStorage
+  const refreshData = useCallback(async () => {
+    setLoadingDB(true)
+    try {
+      const [dbLogs, localLogs] = await Promise.all([
+        getDBActivityLogs(),
+        Promise.resolve(getActivityLogs()),
+      ])
+      // Fusionar: DB primero (más reciente), luego los locales que no sean de DB
+      const merged = [...dbLogs, ...localLogs]
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      setLogs(merged)
+      setStats(calcStats(merged))
+    } catch {
+      const local = getActivityLogs()
+      setLogs(local)
+      setStats(calcStats(local))
+    } finally {
+      setLoadingDB(false)
+    }
+  }, [])
 
   useEffect(() => {
     refreshData()
-    // Auto-refresh cada 10 segundos
-    const interval = setInterval(refreshData, 10000)
-    return () => clearInterval(interval)
+
+    // Refrescar cuando otro módulo registre actividad local
+    window.addEventListener('activityLogUpdated', refreshData)
+    const handleStorage = (e) => { if (e.key === 'etb_activity_log') refreshData() }
+    window.addEventListener('storage', handleStorage)
+
+    // Polling cada 15 s para capturar nuevas limpiezas en SQLite
+    const interval = setInterval(refreshData, 15000)
+
+    return () => {
+      window.removeEventListener('activityLogUpdated', refreshData)
+      window.removeEventListener('storage', handleStorage)
+      clearInterval(interval)
+    }
+  }, [refreshData])
+
+  useEffect(() => {
+    const cd = setInterval(() => {
+      setCountdown(prev => (prev <= 1 ? 10 : prev - 1))
+    }, 1000)
+    return () => clearInterval(cd)
   }, [])
 
   // Filtrado
@@ -77,7 +132,7 @@ export default function AdminPanel() {
     return groups
   }, [filteredLogs])
 
-  // Limpiar registros
+  // Limpiar solo registros locales (los de BD persisten en SQLite)
   const handleClear = () => {
     clearActivityLogs()
     refreshData()
@@ -104,6 +159,15 @@ export default function AdminPanel() {
       badge={t('Administración')}
       title={t('Panel de Administrador')}
       description={t('Registro y seguimiento de todas las operaciones realizadas por los usuarios del sistema.')}
+      action={
+        loadingDB
+          ? <span style={{ fontSize: '0.78rem', color: 'var(--clr-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> Sincronizando BD...
+            </span>
+          : <span style={{ fontSize: '0.78rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Database size={13} /> {logs.filter(l => l._source === 'db').length} operaciones desde BD
+            </span>
+      }
     >
       <div className="admin-container">
 
@@ -115,6 +179,38 @@ export default function AdminPanel() {
           <StatCard Icon={Users} label={t('Usuarios activos')} value={stats.usuarios || 0} color="purple" />
           <StatCard Icon={CheckCircle} label={t('Exitosos')} value={stats.exitosos || 0} color="emerald" />
           <StatCard Icon={XCircle} label={t('Errores')} value={stats.errores || 0} color="red" />
+        </div>
+
+        {/* ── Gráfico de distribución de actividad ── */}
+        <div className="glass-card" style={{ padding: '1.5rem' }}>
+          <h3 style={{ color: '#fff', margin: '0 0 1rem 0', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <BarChart3 size={16} color="var(--clr-accent)" />
+            {t('Distribución de Actividad')}
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: countdown <= 3 ? '#4ade80' : 'var(--clr-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <RefreshCw size={11} style={{ animation: countdown <= 3 ? 'spin 0.6s linear infinite' : 'none' }} />
+              {t('Actualiza en')} {countdown}s
+            </span>
+          </h3>
+          <div className="activity-chart">
+            {[
+              { label: t('Limpiezas'),  value: stats.limpiezas  || 0, color: 'var(--clr-accent)' },
+              { label: t('Creaciones'), value: stats.creaciones || 0, color: '#10b981' },
+              { label: t('Consultas'),  value: stats.consultas  || 0, color: '#a855f7' },
+              { label: t('Exitosos'),   value: stats.exitosos   || 0, color: '#22c55e' },
+              { label: t('Errores'),    value: stats.errores    || 0, color: '#ef4444' },
+            ].map(item => {
+              const pct = stats.total > 0 ? Math.min(100, Math.round((item.value / stats.total) * 100)) : 0
+              return (
+                <div key={item.label} className="chart-row">
+                  <span className="chart-label">{item.label}</span>
+                  <div className="chart-bar-bg">
+                    <div className="chart-bar-fill" style={{ width: `${pct}%`, background: item.color }} />
+                  </div>
+                  <span className="chart-value">{item.value}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* ── Filtros y acciones ── */}
@@ -182,10 +278,10 @@ export default function AdminPanel() {
             <div className="confirm-dialog glass-card" onClick={e => e.stopPropagation()}>
               <AlertTriangle size={40} className="confirm-icon" />
               <h3>{t('¿Estás seguro?')}</h3>
-              <p>{t('Se eliminarán permanentemente todos los registros de actividad.')}</p>
+              <p>{t('Se eliminarán los registros locales de sesión. Las operaciones guardadas en la base de datos seguirán disponibles.')}</p>
               <div className="confirm-actions">
                 <button className="btn btn-primary" style={{ background: '#ef4444' }} onClick={handleClear}>
-                  {t('Sí, eliminar todo')}
+                  {t('Sí, limpiar sesión')}
                 </button>
                 <button className="btn btn-accent" onClick={() => setShowConfirmClear(false)}>
                   {t('Cancelar')}
@@ -231,14 +327,23 @@ export default function AdminPanel() {
                             {!isLast && <div className="timeline-line"></div>}
                           </div>
                           
-                          <div className="timeline-content glass-card">
+                          <div
+                            className="timeline-content glass-card timeline-content-clickable"
+                            onClick={() => setSelectedLog(log)}
+                            title={t('Ver detalle')}
+                          >
                             <div className="timeline-header">
                               <div className="timeline-user">
                                 <div className="mini-avatar">
                                   {log.usuario?.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <span className="user-name">{log.usuario}</span>
+                                  <span className="user-name">
+                                    {log.usuario}
+                                    {log._source === 'db' && (
+                                      <span style={{ marginLeft: '0.4rem', fontSize: '0.65rem', background: 'rgba(99,102,241,0.2)', color: '#818cf8', padding: '1px 6px', borderRadius: '999px', fontWeight: 600 }}>BD</span>
+                                    )}
+                                  </span>
                                   <span className="action-text">
                                     {' '}{t('realizó una')} <strong>{log.accion.toLowerCase()}</strong> {t('en')} <strong>{log.modulo}</strong>
                                   </span>
@@ -252,6 +357,7 @@ export default function AdminPanel() {
                                 <span className="timeline-time">
                                   {new Date(log.timestamp).toLocaleTimeString(i18n.language, {hour: '2-digit', minute:'2-digit'})}
                                 </span>
+                                <ChevronRight size={14} style={{ color: 'var(--clr-muted)', flexShrink: 0 }} />
                               </div>
                             </div>
                             <div className="timeline-body">
@@ -269,6 +375,14 @@ export default function AdminPanel() {
         </div>
 
       </div>
+
+      {/* ── Modal de Detalle ── */}
+      {selectedLog && (
+        <LogDetailModal
+          log={selectedLog}
+          onClose={() => setSelectedLog(null)}
+        />
+      )}
     </SubPage>
   )
 }
@@ -287,3 +401,4 @@ function StatCard({ Icon, label, value, color }) {
     </div>
   )
 }
+

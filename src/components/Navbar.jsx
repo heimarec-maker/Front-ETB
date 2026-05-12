@@ -1,7 +1,8 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { User, LogOut, Activity, Users, FileBarChart, Database } from 'lucide-react'
+import { User, LogOut, Activity, Users, Sparkles } from 'lucide-react'
+import { useUser } from '../context/UserContext'
 import etbLogo from '../assets/logo ETB-02.png'
 import './Navbar.css'
 
@@ -14,10 +15,9 @@ const userNavItems = [
 ]
 
 const adminNavItems = [
-  { labelKey: 'Registro de Actividad',   path: '/admin/actividad', Icon: Activity      },
-  { labelKey: 'Gestión de Usuarios',     path: '/admin/usuarios',  Icon: Users         },
-  { labelKey: 'Reportes',                path: '/admin/reportes',  Icon: FileBarChart  },
-  { labelKey: 'Respaldo de Datos',       path: '/admin/respaldo',  Icon: Database      },
+  { labelKey: 'Registro de Actividad',   path: '/admin/actividad',  Icon: Activity  },
+  { labelKey: 'Historial Limpiezas',     path: '/admin/limpiezas',  Icon: Sparkles  },
+  { labelKey: 'Gestión de Usuarios',     path: '/admin/usuarios',   Icon: Users     },
 ]
 
 export default function Navbar() {
@@ -27,8 +27,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const userMenuRef = useRef(null)
 
-  const savedUser = localStorage.getItem('currentUser')
-  const currentUser = savedUser ? JSON.parse(savedUser) : null
+  const { currentUser, logout } = useUser()
   const isAdmin = currentUser?.role === 'admin'
 
   // Seleccionar links según rol
@@ -37,7 +36,7 @@ export default function Navbar() {
   const handleLogout = () => {
     setUserMenuOpen(false)
     setOpen(false)
-    localStorage.removeItem('currentUser')
+    logout()
     navigate('/')
   }
 
@@ -92,7 +91,11 @@ export default function Navbar() {
               onClick={() => setUserMenuOpen(!userMenuOpen)}
             >
               <div className={`user-avatar ${isAdmin ? 'user-avatar--admin' : ''}`}>
-                {currentUser.username.charAt(0).toUpperCase()}
+                {currentUser.avatar ? (
+                  <img src={currentUser.avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+                ) : (
+                  currentUser.username.charAt(0).toUpperCase()
+                )}
               </div>
               <div className="user-info-wrapper">
                 <span className="user-greeting">{t('Hola,')}</span>
@@ -159,7 +162,11 @@ export default function Navbar() {
                 <div className="mobile-user-section">
                   <div className="mobile-user-info">
                     <div className={`user-avatar ${isAdmin ? 'user-avatar--admin' : ''}`}>
-                      {currentUser.username.charAt(0).toUpperCase()}
+                      {currentUser.avatar ? (
+                        <img src={currentUser.avatar} alt="Avatar" style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%'}} />
+                      ) : (
+                        currentUser.username.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div>
                       <p className="mobile-greeting">{t('Hola,')}</p>

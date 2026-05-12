@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext'
+import { UserProvider } from './context/UserContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -11,8 +12,7 @@ import Login from './pages/Login'
 import Perfil from './pages/Perfil'
 import AdminPanel from './pages/AdminPanel'
 import AdminUsuarios from './pages/AdminUsuarios'
-import AdminReportes from './pages/AdminReportes'
-import AdminRespaldo from './pages/AdminRespaldo'
+import AdminLimpiezas from './pages/AdminLimpiezas'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function AppContent() {
@@ -37,8 +37,7 @@ function AppContent() {
           {/* Rutas de Administrador */}
           <Route path="/admin/actividad" element={<ProtectedRoute requiredRole="admin"><AdminPanel /></ProtectedRoute>} />
           <Route path="/admin/usuarios" element={<ProtectedRoute requiredRole="admin"><AdminUsuarios /></ProtectedRoute>} />
-          <Route path="/admin/reportes" element={<ProtectedRoute requiredRole="admin"><AdminReportes /></ProtectedRoute>} />
-          <Route path="/admin/respaldo" element={<ProtectedRoute requiredRole="admin"><AdminRespaldo /></ProtectedRoute>} />
+          <Route path="/admin/limpiezas" element={<ProtectedRoute requiredRole="admin"><AdminLimpiezas /></ProtectedRoute>} />
         </Routes>
       </main>
       {!isLoginPage && <Footer />}
@@ -49,9 +48,11 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <UserProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </UserProvider>
     </ThemeProvider>
   )
 }

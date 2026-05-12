@@ -211,5 +211,10 @@
   "Usuarios Activos": "Usuários Ativos",
   "Administradores": "Administradores",
   "Inactivo": "Inativo",
-  "Abrir menú": "Abrir menu"
+  "Abrir menú": "Abrir menu",
+  "Tanto el Serial como la MAC son obligatorios para la limpieza.": "Tanto o Serial quanto o MAC são obrigatórios para a limpeza.",
+  "No se detectaron seriales y MACs válidos en el listado. Asegúrate de que cada línea contenga ambos.": "Nenhum serial e MAC válidos foram detectados na lista. Certifique-se de que cada linha contenha ambos.",
+  "Error al conectar con el servidor o en el proceso de limpieza.": "Erro ao conectar com o servidor ou no processo de limpeza.",
+  "Tanto el Serial como la MAC son obligatorios para la consulta.": "Tanto o Serial quanto o MAC são obrigatórios para a consulta.",
+  "Error al conectar con el servidor o al consultar el equipo.": "Erro ao conectar com o servidor ou ao consultar o equipamento."
 }

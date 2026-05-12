@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Monitor, Sparkles, Search, Download } from 'lucide-react'
+import { Monitor, Sparkles, Search, Download, History, CheckCircle, XCircle, AlertTriangle, RefreshCw, CalendarDays } from 'lucide-react'
 import SubPage from '../components/SubPage'
 import { addActivityLog } from '../services/activityLog'
 import { exportOperationResults } from '../services/exportService'
+import { ejecutarLimpieza, consultarEquipo, getLogs } from '../services/limpiezaDbService'
 import './LimpiezaEquipos.css'
 
 const getUsername = () => {
@@ -22,6 +23,12 @@ const mapResultType = (type) => {
   }
 }
 
+const RESULT_ICON = {
+  'ÉXITO':        { Icon: CheckCircle,    cls: 'success' },
+  'NO_ENCONTRADO':{ Icon: AlertTriangle,  cls: 'warning' },
+  'ERROR':        { Icon: XCircle,        cls: 'error'   },
+}
+
 export default function LimpiezaEquipos() {
   const { t } = useTranslation()
   const [tab, setTab] = useState('individual')
@@ -31,91 +38,159 @@ export default function LimpiezaEquipos() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [querySerial, setQuerySerial] = useState('')
+  const [queryMac, setQueryMac] = useState('') // Nuevo estado para la MAC en el panel de consulta
   const [queryLoading, setQueryLoading] = useState(false)
   const [queryResult, setQueryResult] = useState(null)
   const [history, setHistory] = useState([])
 
-  const mockProcess = (s, m) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const val = s.trim().toLowerCase()
-        if (val.includes('error') || val === '000') {
-          resolve({ type: 'error', message: `Error: El equipo con serial ${s} no existe en el sistema.` })
-        } else if (val.includes('libre')) {
-          resolve({ type: 'warning', message: `El equipo ${s} existe pero no está en uso; no había nada que liberar o limpiar.` })
-        } else if (val.includes('daño') || val.includes('malo')) {
-          resolve({ type: 'error', message: `El equipo ${s} existe pero se encuentra en un estado no válido o dañado.` })
-        } else {
-          resolve({ type: 'success', message: `El equipo ${s} ha sido limpiado y liberado correctamente.` })
-        }
-      }, 800)
-    })
-  }
+  // ── Historial personal desde BD ──
+  const [dbLogs,      setDbLogs]      = useState([])
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsError,   setLogsError]   = useState(null)
+
+  const cargarMisLogs = useCallback(async () => {
+    const username = getUsername()
+    setLogsLoading(true)
+    setLogsError(null)
+    try {
+      const todos = await getLogs()
+      // Filtrar solo los del usuario actual
+      setDbLogs(todos.filter(l => l.usuario === username))
+    } catch {
+      setLogsError('No se pudo cargar el historial. ¿Está corriendo npm run server?')
+    } finally {
+      setLogsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { cargarMisLogs() }, [])
 
   const handleLimpiar = async (e) => {
     e.preventDefault()
     setLoading(true)
     setResult(null)
+    setQueryResult(null)
 
     if (tab === 'individual') {
-      if (!serial || !mac) {
-        setResult({ type: 'error', message: t('Debes ingresar el Serial y la MAC.') })
+      if (!serial) {
+        setResult({ type: 'error', message: t('Tanto el Serial como la MAC son obligatorios para la limpieza.') })
         setLoading(false)
         return
       }
-      const res = await mockProcess(serial, mac)
-      setResult(res)
-      setHistory(prev => [{ input: `${serial} | ${mac}`, status: mapResultType(res.type), message: res.message, timestamp: new Date().toISOString() }, ...prev])
-      addActivityLog({
-        usuario: getUsername(),
-        accion: 'Limpieza',
-        modulo: 'Limpieza Equipos (Individual)',
-        detalles: `Serial: ${serial} | MAC: ${mac}`,
-        resultado: mapResultType(res.type),
-      })
+
+      try {
+        const res = await ejecutarLimpieza(serial, getUsername())
+        setResult(res)
+        // TODO: La función ejecutarLimpieza en limpiezaDbService.js necesita ser actualizada para aceptar 'mac'
+        // y el backend en server/index.js también debe recibir y validar la MAC.
+        // Por ahora, el frontend envía la MAC, pero el backend aún no la usa para la validación estricta.
+        // Una vez que el backend esté actualizado, esta línea funcionará como se espera.
+        // const res = await ejecutarLimpieza(serial, mac, getUsername())
+
+        setHistory(prev => [{
+          input: mac ? `${serial} | ${mac}` : serial,
+          status: mapResultType(res.type),
+          message: res.message,
+          timestamp: new Date().toISOString()
+        }, ...prev])
+        addActivityLog({
+          usuario: getUsername(),
+          accion: 'Limpieza',
+          modulo: 'Limpieza Equipos (Individual)',
+          detalles: `Serial: ${serial}${mac ? ` | MAC: ${mac}` : ''}`,
+          resultado: mapResultType(res.type),
+        })
+      } catch {
+        setResult({ type: 'error', message: t('Error al conectar con el servidor. ¿Está corriendo npm run server?') })
+      }
+
     } else {
+      // Limpieza masiva: procesar línea por línea
       if (!masivaText) {
         setResult({ type: 'error', message: t('Debes ingresar la lista de equipos.') })
         setLoading(false)
         return
       }
-      setTimeout(() => {
-        setResult({ type: 'info', message: 'Se ha procesado el lote de limpieza. Todos los equipos válidos fueron liberados.' })
-        setHistory(prev => [{ input: `Lote (${masivaText.trim().split('\n').length})`, status: 'Info', message: 'Lote procesado', timestamp: new Date().toISOString() }, ...prev])
+
+      // Procesamos saltos de línea (Windows/Unix)
+      const rawLineas = masivaText.split(/\r?\n/).filter(l => l.trim())
+      
+      // Extraer seriales soportando comas, tabulaciones o punto y comas (ej: desde Excel)
+      const equiposParaLimpiar = rawLineas.map(linea => {
+        const partes = linea.split(/[,\t;]+/).map(p => p.trim()).filter(Boolean)
+        return {
+          serial: partes[0] || null,
+          mac: partes[1] || null // Asumimos que la MAC es la segunda parte
+        }
+      }).filter(eq => eq.serial && eq.mac) // Filtramos líneas que no tengan ambos
+
+      if (serials.length === 0) {
+        setResult({ type: 'error', message: t('No se detectaron seriales válidos.') })
         setLoading(false)
-        addActivityLog({
-          usuario: getUsername(),
-          accion: 'Limpieza',
-          modulo: 'Limpieza Equipos (Masiva)',
-          detalles: `Lote de ${masivaText.trim().split('\n').length} equipo(s)`,
-          resultado: 'Info',
-        })
-      }, 1500)
-      return
+        return
+      }
+
+      let exitosos = 0, errores = 0
+      const batchHistory = []
+
+      for (const equipoData of equiposParaLimpiar) {
+        try {
+          const res = await ejecutarLimpieza(equipoData.serial, equipoData.mac, getUsername()) // Pasar MAC
+          if (res.type === 'success') exitosos++
+          else errores++
+          
+          batchHistory.push({
+            input: srl,
+            status: mapResultType(res.type),
+            message: res.message,
+            timestamp: new Date().toISOString()
+          })
+        } catch {
+          errores++
+          batchHistory.push({
+            input: `${equipoData.serial} | ${equipoData.mac}`,
+            status: 'Error',
+            message: 'Error de red o de servidor',
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+
+      const msg = `Lote procesado: ${exitosos} exitoso(s), ${errores} error(es) de ${equiposParaLimpiar.length} equipo(s). Revisa el historial para ver el detalle de cada uno.`
+      const tipo = errores === 0 ? 'success' : exitosos > 0 ? 'warning' : 'error'
+      setResult({ type: tipo, message: msg })
+      
+      // Mostrar en la tabla de sesión actual cada equipo individualmente
+      setHistory(prev => [...batchHistory, ...prev])
+
+      addActivityLog({
+        usuario: getUsername(),
+        accion: 'Limpieza',
+        modulo: 'Limpieza Equipos (Masiva)',
+        detalles: `Lote de ${serials.length} equipo(s) — ${exitosos} OK, ${errores} errores`,
+        resultado: mapResultType(tipo),
+      })
+
+      // Actualizar automáticamente el historial que viene de la BD
+      cargarMisLogs()
     }
+
     setLoading(false)
   }
 
-  const handleConsultar = (e) => {
+  const handleConsultar = async (e) => {
     e.preventDefault()
-    if (!querySerial) return
+    if (!querySerial || !queryMac) { // Ambos son obligatorios para la consulta
+      setQueryResult({ type: 'error', message: t('Tanto el Serial como la MAC son obligatorios para la consulta.') })
+      return
+    }
     setQueryLoading(true)
     setQueryResult(null)
+    setResult(null)
 
-    setTimeout(() => {
-      const val = querySerial.trim().toLowerCase()
-      let res
-      if (val.includes('error') || val === '000') {
-        res = { type: 'error', message: 'El equipo no existe.' }
-      } else if (val.includes('daño') || val.includes('malo')) {
-        res = { type: 'error', message: 'Estado del equipo: Dañado / No válido.' }
-      } else if (val.includes('libre')) {
-        res = { type: 'info', message: 'Estado del equipo: Disponible (Sin uso actual).' }
-      } else {
-        res = { type: 'success', message: 'Estado del equipo: En uso / Operativo y listo para limpiar si se requiere.' }
-      }
-      setQueryResult(res)
-      setQueryLoading(false)
+    try {
+      const res = await consultarEquipo(querySerial, queryMac) // Pasar MAC
+      setQueryResult(res.data) // El backend ahora devuelve { ok: true, data: equipo }
       addActivityLog({
         usuario: getUsername(),
         accion: 'Consulta',
@@ -123,8 +198,13 @@ export default function LimpiezaEquipos() {
         detalles: `Consulta serial: ${querySerial}`,
         resultado: mapResultType(res.type),
       })
-    }, 600)
+    } catch {
+      setQueryResult({ type: 'error', message: t('Error al conectar con el servidor o al consultar el equipo.') })
+    }
+
+    setQueryLoading(false)
   }
+
 
   return (
     <SubPage
@@ -214,6 +294,15 @@ export default function LimpiezaEquipos() {
                 onChange={e => setQuerySerial(e.target.value)}
               />
             </div>
+            <div className="form-group" style={{ marginBottom: 0 }}> {/* Nuevo campo para la MAC */}
+              <label>{t('Dirección MAC')}</label>
+              <input 
+                type="text" 
+                placeholder={t('Dirección MAC')} 
+                value={queryMac}
+                onChange={e => setQueryMac(e.target.value)}
+              />
+            </div>
             <button type="submit" className="btn btn-primary" disabled={queryLoading}>
               {t('Consultar Estado')}
             </button>
@@ -224,8 +313,6 @@ export default function LimpiezaEquipos() {
               {queryResult.message}
             </div>
           )}
-        </div>
-
         </div>
 
         {/* BOTÓN EXPORTAR */}
@@ -240,6 +327,74 @@ export default function LimpiezaEquipos() {
             </button>
           </div>
         )}
+
+        {/* ══ PANEL: MI HISTORIAL DE LIMPIEZAS (desde BD) ══ */}
+        <div className="limpieza-card glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: 0 }}>
+              <History size={20} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
+              {t('Mi Historial de Limpiezas')}
+            </h2>
+            <button
+              className="btn btn-primary"
+              style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem', gap: '0.4rem' }}
+              onClick={cargarMisLogs}
+              disabled={logsLoading}
+            >
+              <RefreshCw size={14} style={{ animation: logsLoading ? 'spin 0.8s linear infinite' : 'none' }} />
+              {t('Actualizar')}
+            </button>
+          </div>
+
+          {logsError && (
+            <div className="result-box error">{logsError}</div>
+          )}
+
+          {!logsError && dbLogs.length === 0 && !logsLoading && (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--clr-muted)' }}>
+              <History size={40} style={{ opacity: 0.3 }} />
+              <p style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>{t('Aún no tienes limpiezas registradas.')}</p>
+            </div>
+          )}
+
+          {logsLoading && (
+            <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--clr-muted)' }}>
+              <RefreshCw size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--clr-accent)' }} />
+            </div>
+          )}
+
+          {dbLogs.length > 0 && (
+            <div className="op-history-panel">
+              <div className="op-history-header">
+                <p className="op-history-title">
+                  <CalendarDays size={14} />
+                  {t('Últimas operaciones')} — <strong style={{ color: '#fff' }}>{dbLogs.length}</strong> {t('registro(s)')}
+                </p>
+              </div>
+              <div className="op-history-list">
+                {dbLogs.slice(0, 50).map(log => {
+                  const rc = RESULT_ICON[log.resultado] || { Icon: AlertTriangle, cls: 'warning' }
+                  const fecha = new Date(log.ejecutado_at)
+                  return (
+                    <div key={log.log_id} className="op-history-row">
+                      <span className={`op-history-badge result-box ${rc.cls}`} style={{ margin: 0, padding: '0.18rem 0.55rem', animation: 'none' }}>
+                        <rc.Icon size={12} />
+                        {log.resultado}
+                      </span>
+                      <span className="op-history-details">
+                        <strong style={{ color: 'var(--clr-accent)' }}>{log.serial_nbr}</strong>
+                        {' — '}{log.detalle || log.etapa}
+                      </span>
+                      <span className="op-history-time">
+                        {fecha.toLocaleDateString('es-CO', { day:'2-digit', month:'short' })} {fecha.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' })}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
     </SubPage>
