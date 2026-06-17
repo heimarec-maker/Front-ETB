@@ -567,7 +567,7 @@ export default function LimpiezaEquipos() {
                 />
               </div>
               <div className="form-group">
-                <label>{t('Dirección MAC')}</label>
+                <label>{t('Dirección MAC')} ({t('Opcional')})</label>
                 <input
                   type="text"
                   placeholder={t('Ej: AAAAAAAAA115')}

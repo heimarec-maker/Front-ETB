@@ -291,6 +291,7 @@ const USER_PASSWORDS = {
   '1': 'Admin123*',
   '2': 'Heimar123*',
   '3': 'Vanessa123*',
+  '4': 'Jhorman123*',
 }
 
 let SYSTEM_USERS = [
@@ -322,6 +323,16 @@ let SYSTEM_USERS = [
     role: 'Administrador',
     department: 'Operaciones',
     cargo: 'Administradora ETB',
+    status: 'Activo',
+  },
+    {
+    id: '4',
+    username: 'jhorman',
+    name: 'Jhorman',
+    email: 'jhorman@etb.com.co',
+    role: 'Operador',
+    department: 'Operaciones',
+    cargo: 'Técnico ETB',
     status: 'Activo',
   },
 ]
