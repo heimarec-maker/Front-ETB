@@ -554,7 +554,7 @@ export default function LimpiezaEquipos() {
 
         {/* ══ PANEL DE CONSULTA ══ */}
         <div className="limpieza-card glass-card">
-          <h2><Search size={20} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />{t('Consulta de Estado')}</h2>
+          <h2><Search size={20} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />{t('Consultar Equipos')}</h2>
           <form onSubmit={handleConsultar}>
             <div className="form-row">
               <div className="form-group">
@@ -577,7 +577,7 @@ export default function LimpiezaEquipos() {
               </div>
             </div>
             <button type="submit" className="btn btn-primary" disabled={queryLoading} style={{ width: '100%' }}>
-              {queryLoading ? t('Consultando...') : t('Consultar Estado')}
+              {queryLoading ? t('Consultando...') : t('Consultar Equipos')}
             </button>
           </form>
 

@@ -34,26 +34,24 @@ db.initDB().catch(err => {
 // Funciones internas de BD
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** OP 1 — Validar estado del equipo por serial y MAC (según Consulta 1 + requisito MAC) */
-async function validarEquipo(serial, mac) {
+/** OP 1 — Validar estado del equipo por serial (Paso 1.1 del manual) */
+async function validarEquipo(serial) {
+  // Siguiendo exactamente el Paso 1.1: SELECT ca_value AS ESTADO, serial_nbr AS SERIAL...
   return await db.queryOne(`
     SELECT 
-      a.ca_value      AS estado_cpe, 
-      b.serial_nbr    AS serial_nbr,
-      b.equipment_id  AS equipment_id,
-      m.ca_value      AS mac_address
-    FROM   ASAP.equip_ca_value a, ASAP.equipment b, ASAP.equip_ca_value m
+      a.ca_value      AS estado, 
+      b.serial_nbr    AS serial,
+      b.equipment_id  AS equipment_id
+    FROM   ASAP.equip_ca_value a, ASAP.equipment b
     WHERE  b.serial_nbr = :serial
     AND    a.ca_value_label = 'Estado CPE'
     AND    a.equipment_id = b.equipment_id
-    AND    m.equipment_id = b.equipment_id
-    AND    m.ca_value_label = 'Mac Address'
-    AND    m.ca_value = :mac
-  `, { serial, mac })
+  `, { serial })
 }
 
-/** OP 2 — Borrado del equipo (Primer paso: procedimiento con ARRAY_EQUIPOS) */
+/** OP 2 — Borrado del equipo (Paso 1.2: procedimiento con ARRAY_EQUIPOS) */
 async function ejecutarBorrado(serial, usuario) {
+  console.log(`[Step 1.2] Ejecutando BORRADO_EQUIPOS para ${serial}...`)
   const plsql = `
     DECLARE
       VALORES ASAP.ARRAY_EQUIPOS := ASAP.ARRAY_EQUIPOS(:serial);
@@ -61,37 +59,43 @@ async function ejecutarBorrado(serial, usuario) {
       ASAP.BORRADO_EQUIPOS (VALORES);
     END;
   `;
+  const start = Date.now()
   await db.execute(plsql, { serial })
-  await db.registrarLog(serial, usuario, 'BORRADO', 'ÉXITO', 'Procedimiento BORRADO_EQUIPOS ejecutado con éxito')
+  console.log(`[Step 1.2] Finalizado en ${Date.now() - start}ms`)
+  await db.registrarLog(serial, usuario, 'BORRADO', 'ÉXITO', 'Paso 1.2: Procedimiento BORRADO_EQUIPOS ejecutado exitosamente.')
 }
 
-/** OP 3 — Marcar serial en serv_item_value con '*' */
 async function limpiarServItem(serial, usuario) {
+  console.log(`[Step 1.3] Limpiando serv_item_value para ${serial}...`)
+  const start = Date.now()
   const r = await db.execute(`
     UPDATE ASAP.serv_item_value
-    SET    valid_value = valid_value || '*', updated_at = CURRENT_TIMESTAMP
+    SET    valid_value = valid_value || '*'
     WHERE  value_label = 'Serial' AND valid_value = :serial
   `, { serial })
   
   const changes = r.rowsAffected || 0
+  console.log(`[Step 1.3] Finalizado. Filas: ${changes} (${Date.now() - start}ms)`)
   await db.registrarLog(serial, usuario, 'SERV_ITEM',
     changes > 0 ? 'ÉXITO' : 'NO_ENCONTRADO',
-    `${changes} fila(s) actualizadas en serv_item_value`)
+    `Paso 1.3: ${changes} fila(s) actualizadas en serv_item_value`)
   return changes
 }
 
-/** OP 4 — Marcar serial en serv_req_si_value con '*' */
 async function limpiarServReq(serial, usuario) {
+  console.log(`[Step 1.4] Limpiando serv_req_si_value para ${serial}...`)
+  const start = Date.now()
   const r = await db.execute(`
     UPDATE ASAP.serv_req_si_value
-    SET    valid_value = valid_value || '*', updated_at = CURRENT_TIMESTAMP
+    SET    valid_value = valid_value || '*'
     WHERE  value_label = 'Serial' AND valid_value = :serial
   `, { serial })
   
   const changes = r.rowsAffected || 0
+  console.log(`[Step 1.4] Finalizado. Filas: ${changes} (${Date.now() - start}ms)`)
   await db.registrarLog(serial, usuario, 'SERV_REQ',
     changes > 0 ? 'ÉXITO' : 'NO_ENCONTRADO',
-    `${changes} fila(s) actualizadas en serv_req_si_value`)
+    `Paso 1.4: ${changes} fila(s) actualizadas en serv_req_si_value`)
   return changes
 }
 
@@ -111,11 +115,11 @@ app.get('/api/equipos', async (_req, res) => {
         e.tipo,
         e.estado AS estado_general,
         cv.ca_value AS estado_cpe
-      FROM equipment e
-      LEFT JOIN equip_ca_value cv
+      FROM ASAP.equipment e
+      LEFT JOIN ASAP.equip_ca_value cv
              ON cv.equipment_id  = e.equipment_id
             AND cv.ca_value_label = 'Estado CPE'
-      ORDER BY e.created_at DESC
+      ORDER BY e.equipment_id DESC
     `)
     res.json({ ok: true, data: equipos })
   } catch (err) {
@@ -130,16 +134,23 @@ app.get('/api/equipos/:serial', async (req, res) => {
 
   try {
     const mac = (req.query.mac || '').toUpperCase()
-    const equipo = await validarEquipo(serialUp, mac)
+    const equipo = await validarEquipo(serialUp)
 
     if (!equipo) {
       return res.status(404).json({
         ok: false,
-        mensaje: `Serial "${serial}" no encontrado en la base de datos.`
+        mensaje: `Serial "${serial}" no encontrado en Oracle (ASAP).`
       })
     }
 
-    res.json({ ok: true, data: equipo })
+    // Normalizar para el frontend (la consulta ahora devuelve 'estado' y 'serial')
+    const responseData = {
+      ...equipo,
+      estado_cpe: equipo.estado,
+      serial_nbr: equipo.serial
+    }
+
+    res.json({ ok: true, data: responseData })
   } catch (err) {
     res.status(500).json({ ok: false, message: 'Error al validar el equipo.' })
   }
@@ -162,25 +173,27 @@ app.post('/api/limpieza/:serial', async (req, res) => {
       })
     }
 
-    // ── OP 1: Validar ──
-    const equipo = await validarEquipo(serialUp, macUp)
+    // ── OP 1: Validar (Paso 1.1) ──
+    const equipo = await validarEquipo(serialUp)
     if (!equipo) {
-      await db.registrarLog(serialUp, usuario, 'VALIDACION', 'NO_ENCONTRADO', `Serial ${serialUp} o MAC ${macUp} no coinciden`)
+      await db.registrarLog(serialUp, usuario, 'VALIDACION', 'NO_ENCONTRADO', `Serial ${serialUp} no encontrado en Oracle`)
       return res.status(404).json({
         ok: false,
         etapa: 'VALIDACION',
-        message: `El equipo con serial "${serial}" y MAC "${mac}" no existe o no coincide en el sistema.`
+        message: `El equipo con serial "${serial}" no existe en el sistema.`
       })
     }
 
-    if (equipo.estado_general === 'LIBRE') {
+    /* 
+    if (equipo.estado === 'LIBRE' || equipo.estado === 'DISPONIBLE') {
       return res.json({
         ok: true,
         advertencia: true,
-        message: `El equipo ${serial} con MAC ${mac} ya se encuentra libre y limpio.`,
+        message: `El equipo ${serial} ya se encuentra ${equipo.estado}.`,
         equipo
       })
     }
+    */
 
     // ── OP 2: BORRADO_EQUIPOS ──
     await ejecutarBorrado(serialUp, usuario)
@@ -210,19 +223,13 @@ app.post('/api/limpieza/:serial', async (req, res) => {
 /** GET /api/actividad — Registro de actividad unificado (para AdminPanel) */
 app.get('/api/actividad', async (_req, res) => {
   try {
-    const logs = await db.query(`
-      SELECT * FROM (
-        SELECT log_id as id, serial_nbr, usuario, etapa, resultado, detalle, ejecutado_at
-        FROM   limpieza_log
-        ORDER  BY ejecutado_at DESC
-      ) WHERE ROWNUM <= 500
-    `)
+    const logs = await db.getLocalLogs()
 
-    const actividades = logs.map(log => {
+    const actividades = (logs || []).map(log => {
       let resultado
-      if      (log.resultado === 'ÉXITO')         resultado = 'Éxito'
-      else if (log.resultado === 'NO_ENCONTRADO') resultado = 'Advertencia'
-      else                                         resultado = 'Error'
+      if      (log.resultado === 'ÉXITO')        resultado = 'Éxito'
+      else if (log.resultado === 'NO_ENCONTRADO')resultado = 'Advertencia'
+      else                                        resultado = 'Error'
 
       const accion = log.etapa === 'VALIDACION' ? 'Consulta' : 'Limpieza'
 
@@ -234,14 +241,14 @@ app.get('/api/actividad', async (_req, res) => {
       }[log.etapa] || log.etapa
 
       return {
-        id:        `db-${log.id}`,
+        id:        `lcl-${log.log_id}`,
         usuario:   log.usuario,
         accion,
         modulo:    'Limpieza de Equipos',
         detalles:  `[${log.serial_nbr}] ${etapaLabel} — ${log.detalle}`,
         resultado,
         timestamp: log.ejecutado_at,
-        _source:   'db',
+        _source:   'local',
         _etapa:    log.etapa,
         _serial:   log.serial_nbr,
       }
@@ -253,28 +260,20 @@ app.get('/api/actividad', async (_req, res) => {
   }
 })
 
-/** GET /api/limpieza/logs — Historial completo de limpiezas */
+/** GET /api/limpieza/logs — Historial completo de limpiezas locales */
 app.get('/api/limpieza/logs', async (_req, res) => {
   try {
-    const logs = await db.query(`
-      SELECT * FROM (
-        SELECT * FROM limpieza_log ORDER BY ejecutado_at DESC
-      ) WHERE ROWNUM <= 200
-    `)
+    const logs = await db.getLocalLogs()
     res.json({ ok: true, data: logs })
   } catch (err) {
     res.status(500).json({ ok: false, message: 'Error al obtener logs.' })
   }
 })
 
-/** GET /api/limpieza/logs/:serial — Historial de un serial */
+/** GET /api/limpieza/logs/:serial — Historial local de un serial */
 app.get('/api/limpieza/logs/:serial', async (req, res) => {
   try {
-    const logs = await db.query(`
-      SELECT * FROM limpieza_log
-      WHERE serial_nbr = :serial
-      ORDER BY ejecutado_at DESC
-    `, { serial: req.params.serial.toUpperCase() })
+    const logs = await db.getLocalLogs(req.params.serial.toUpperCase())
     res.json({ ok: true, data: logs })
   } catch (err) {
     res.status(500).json({ ok: false, message: 'Error al obtener logs del serial.' })
